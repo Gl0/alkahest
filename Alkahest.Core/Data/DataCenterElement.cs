@@ -83,6 +83,7 @@ namespace Alkahest.Core.Data
                     $"Placeholder element has non-zero child count {childCount}.");
 
             var attrAddr = DataCenter.ReadAddress(reader);
+            if (center.x64) reader.ReadInt32();
 
             if (placeholder && attrAddr != DataCenterAddress.Invalid)
                 throw new InvalidDataException(
@@ -95,6 +96,7 @@ namespace Alkahest.Core.Data
                     $"Element with {attrCount} attributes has invalid attribute address {attrAddr}.");
 
             var childAddr = DataCenter.ReadAddress(reader);
+            if (center.x64) reader.ReadInt32();
 
             if (placeholder && childAddr != DataCenterAddress.Invalid)
                 throw new InvalidDataException(

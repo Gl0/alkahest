@@ -48,9 +48,9 @@ namespace Alkahest.Core.Data
 
         const int ExtensionSize = 8;
 
-        const int AttributeSize = 8;
+        uint AttributeSize = 8;
 
-        const int ElementSize = 16;
+        uint ElementSize = 16;
 
         const int MetadataSize = 16;
 
@@ -70,6 +70,8 @@ namespace Alkahest.Core.Data
 
         public DataCenterFooter Footer { get; }
 
+        public bool x64 { get; }
+
         public DataCenterElement Root => Materialize(DataCenterAddress.Zero);
 
         readonly ConcurrentDictionary<DataCenterAddress, DataCenterElement> _elements =
@@ -87,6 +89,12 @@ namespace Alkahest.Core.Data
 
         public DataCenter(Stream stream, DataCenterMode mode, DataCenterStringOptions options)
         {
+            if (stream.Length > 375000000) /// ugly hack since x64 has the same version
+            {
+                x64 = true;
+                AttributeSize = 12;
+                ElementSize = 24;
+            }
             options.CheckFlagsValidity(nameof(options));
 
             Mode = mode.CheckValidity(nameof(mode));
