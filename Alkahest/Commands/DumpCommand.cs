@@ -79,16 +79,14 @@ namespace Alkahest.Commands
             {
                 MaxDegreeOfParallelism = _parallel ? Environment.ProcessorCount : 1,
             };
-            var work = dc.Root.Children().GroupBy(x => x.Name, (name, elems) =>
-                elems.WithIndex().Select(x => (name, elem: x.Item2, idx: x.Item1))).SelectMany(x => x);
+            var work = dc.Root.Children().GroupBy(x => x.Name).Select(x => (x.Key,x.Count(),x.WithIndex())).SelectMany(y=>y.Item3.Select(z=>(name:y.Key,count:y.Item2,idx:z.Item1,elem:z.Item2)));
             var settings = new XmlWriterSettings
             {
                 Indent = true,
             };
-
             Parallel.ForEach(work, options, item =>
             {
-                var dir = Path.Combine(_output, item.name);
+                var dir = item.count>1 ? Path.Combine(_output, item.name) : _output;
 
                 lock (dc)
                 {
@@ -104,7 +102,7 @@ namespace Alkahest.Commands
                     case DumpFormat.Xml:
                     {
                         using var writer = XmlWriter.Create(Path.Combine(
-                            dir, $"{item.name}-{item.idx}.xml"), settings);
+                            dir, item.count>1 ? $"{item.name}-{item.idx}.xml" : $"{item.name}.xml"), settings);
 
                         WriteElement(writer, item.elem);
                         break;
@@ -112,7 +110,7 @@ namespace Alkahest.Commands
                     case DumpFormat.Json:
                     {
                         using var writer = new JsonTextWriter(new StreamWriter(
-                            Path.Combine(dir, $"{item.name}-{item.idx}.json")))
+                            Path.Combine(dir, item.count > 1 ? $"{item.name}-{item.idx}.json": $"{item.name}.json")))
                         {
                             Formatting = Newtonsoft.Json.Formatting.Indented,
                         };
