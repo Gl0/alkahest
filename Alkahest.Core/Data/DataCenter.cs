@@ -10,7 +10,13 @@ namespace Alkahest.Core.Data
 {
     public sealed class DataCenter : IDisposable
     {
-        public const int KeySize = 16;
+        public static int KeySize => 16;
+
+        public static uint Version => 6;
+
+        public static string PackedExtension => "dat";
+
+        public static string UnpackedExtension => "dec";
 
         public static IReadOnlyDictionary<Region, string> FileNames { get; } =
             new Dictionary<Region, string>
@@ -30,25 +36,25 @@ namespace Alkahest.Core.Data
         public static IReadOnlyDictionary<Region, uint> Versions { get; } =
             new Dictionary<Region, uint>
             {
-                { Region.DE, 350022 },
-                { Region.FR, 350022 },
-                { Region.JP, 350023 },
+                { Region.DE, 353338 },
+                { Region.FR, 353338 },
+                { Region.JP, 353341 },
                 { Region.KR, 0 },
-                { Region.NA, 350027 },
-                { Region.RU, 350024 },
-                { Region.SE, 349932 },
-                { Region.TH, 349932 },
-                { Region.TW, 350025 },
-                { Region.UK, 350022 },
+                { Region.NA, 353337 },
+                { Region.RU, 353342 },
+                { Region.SE, 353339 },
+                { Region.TH, 353339 },
+                { Region.TW, 353340 },
+                { Region.UK, 353338 },
             };
 
-        const int Unknown1Size = 8;
+        const int ExtensionSize = 8;
 
-        const int AttributeSize = 8;
+        uint AttributeSize = 8;
 
-        const int ElementSize = 16;
+        uint ElementSize = 16;
 
-        const int Unknown2Size = 16;
+        const int MetadataSize = 16;
 
         public DataCenterHeader Header { get; }
 
@@ -67,6 +73,7 @@ namespace Alkahest.Core.Data
         internal bool IsDisposed { get; private set; }
 
         internal ReaderWriterLockSlim Lock { get; } = new ReaderWriterLockSlim();
+        public bool x64 { get; }
 
         ConcurrentDictionary<DataCenterAddress, string> _strings =
             new ConcurrentDictionary<DataCenterAddress, string>();
@@ -79,7 +86,7 @@ namespace Alkahest.Core.Data
 
         public DataCenter(uint version)
         {
-            Header = new DataCenterHeader(0, 0, 0, version, 0, 0, 0, 0);
+            Header = new DataCenterHeader(0, 0, -16400, version, 0, 0, 0, 0);
             Footer = new DataCenterFooter(0);
             Root = new DataCenterElement(this, DataCenterAddress.Zero);
         }
@@ -87,24 +94,30 @@ namespace Alkahest.Core.Data
         public unsafe DataCenter(Stream stream, bool intern)
         {
             _intern = intern;
+            if (stream.Length > 375000000) /// ugly hack since x64 has the same version
+            {
+                x64 = true;
+                AttributeSize = 12;
+                ElementSize = 24;
+            }
 
             using var reader = new GameBinaryReader(stream);
 
             Header = ReadHeader(reader);
 
-            ReadSimpleRegion(reader, false, Unknown1Size);
+            ReadSimpleRegion(reader, false, ExtensionSize);
 
             var attributeRegion = ReadSegmentedRegion(reader, AttributeSize);
             var elementRegion = ReadSegmentedRegion(reader, ElementSize);
 
             _stringRegion = ReadSegmentedRegion(reader, sizeof(char));
 
-            ReadSimpleSegmentedRegion(reader, 1024, Unknown2Size);
+            ReadSimpleSegmentedRegion(reader, 1024, MetadataSize);
             ReadSimpleRegion(reader, true, (uint)sizeof(DataCenterAddress));
 
             var nameRegion = ReadSegmentedRegion(reader, sizeof(char));
 
-            ReadSimpleSegmentedRegion(reader, 512, Unknown2Size);
+            ReadSimpleSegmentedRegion(reader, 512, MetadataSize);
 
             var nameAddressRegion = ReadSimpleRegion(reader, true, (uint)sizeof(DataCenterAddress));
 

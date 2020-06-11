@@ -81,7 +81,9 @@ namespace Alkahest.Core.Data
                 attrCount = reader.ReadUInt16();
                 childCount = reader.ReadUInt16();
                 attrAddr = DataCenter.ReadAddress(reader);
+                if (center.x64) reader.ReadInt32();
                 childAddr = DataCenter.ReadAddress(reader);
+                if (center.x64) reader.ReadInt32();
             }
             finally
             {
